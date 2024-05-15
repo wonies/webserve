@@ -86,7 +86,13 @@ void NetServer::manageEvent()
                 }
                 else
                 {
-                    if ()
+                    if (newClient.receiving() == 1)
+                        clients[NetClient._clientfd] += newClient.oss; 
+                    else
+                    {
+                        clients.erase(newClient._clientfd);
+                        exit_error("receive error");
+                    }
                 }
             }
 
