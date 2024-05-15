@@ -20,6 +20,8 @@
 
 #include "client.hpp"
 
+class Client;
+
 class NetworkServer {
  public:
   NetworkServer();
@@ -45,6 +47,7 @@ class NetworkServer {
 
  public:
   std::vector<struct kevent> events;  // 폴링 : 발생한 이벤트에 대한 목록
+  std::map<int, Client> clients;
   // struct kevent events[10];
 };
 

@@ -1,5 +1,5 @@
-
 #include "socket.hpp"
+#include "client.hpp"
 
 NetworkServer::NetworkServer() {
   memset(&_socket.saddr, 0, sizeof(_socket.saddr));
@@ -61,13 +61,25 @@ void NetworkServer::enterKqueue() {
                std::string(strerror(errno)));
   EV_SET(&kev, _socket.ssocket, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
   if (kevent(kq, &kev, 1, NULL, 0, NULL) == -1)
-    //
+    exit_error("Failed tgo register event with kqueue");
     while (true) {
       nevents = kevent(kq, NULL, 0, &events[0], 10, NULL);
       if (nevents == -1)
         exit_error("kevent() error\n" + std::string(strerror(errno)));
       for (int i = 0; i < nevents; ++i) {
         struct kevent temp = events[i];
+        if (temp->filter == EVFILT_READ)
+        {
+          if (temp->ident == ssocket)
+          {
+            Client eachClient;
+            if ((eachClient.csocket = accept(ssocket, NULL, NULL)) == --1)
+              exit_error("accept() error");
+            EV_SET(&temp ,csocket, EVFILT_READ, EV_ADD  EV_ENABLE, 0, 0, NULL);
+            clients[eachClient.csocket] = client; 
+            fcntl(eachClient.csocket, F_SETFL, 0, O_NONBLOCK);
+          }
+        }
       }
     }
 }
