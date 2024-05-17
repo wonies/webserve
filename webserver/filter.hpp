@@ -88,6 +88,8 @@
 
 struct config_s;
 
+typedef std::string name_t;
+
 typedef struct location_s {
 	location_s( const config_s& );
 
@@ -105,6 +107,7 @@ typedef std::vector<location_t>	vec_location_t;
 typedef struct config_s {
 	config_s( void );
 
+	std::vector<name_t> names;
 	str_t				name;
 	port_t				listen;
 	path_t				root;

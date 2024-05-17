@@ -94,7 +94,6 @@ void NetServer::writeClient(int fd) {
     // std::string data = client->oss.str();
     ssize_t sentBytes = send(fd, data.c_str(), data.size(), 0);
     std::cout << "Sent data to client: " << fd << " - " << data << std::endl;
-
     if (sentBytes == -1) {
       perror("send error\n");
       close(fd);
