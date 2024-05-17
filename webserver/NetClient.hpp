@@ -24,7 +24,6 @@ class NetClient {
   NetClient(const NetClient& other);  // 복사 생성자 -> client class화를 위해
   NetClient& operator=(const NetClient& other);  // 복사 할당 연산자
   int getClientFd() const;
-  bool receiving();
   std::ostringstream oss;
 
  private:

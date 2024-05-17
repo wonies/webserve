@@ -9,7 +9,11 @@ NetServer::NetServer() {
   manageEvent();
 }
 
-NetServer::~NetServer() { close(sock); }
+NetServer::~NetServer() { 
+  
+  for (std::map<int, NetClient*>::iterator it = clients.begin(); it != clients.end(); ++it)
+    delete it->second;
+  close(sock); }
 
 void NetServer::initSocket() {
   if ((sock = socket(PF_INET, SOCK_STREAM, 0)) == -1)
@@ -58,21 +62,23 @@ void NetServer::enrollEvent(uintptr_t ident, int16_t filter, uint16_t flags,
 void NetServer::addClient(int fd) {
   fcntl(fd, F_SETFL, O_NONBLOCK);  // socket의 기본 모드는 블로킹이기 떄문에
                                    // nonblocking설정을 소켓생성시에 해주면 됨
-  NetClient newClient(fd);
+  NetClient* newClient = new NetClient(fd);
   clients[fd] = newClient;
 }
 
 void NetServer::readClient(int fd) {
-  std::map<int, NetClient>::iterator it = clients.find(fd);
+  std::map<int, NetClient *>::iterator it = clients.find(fd);
   if (it != clients.end()) {
-    NetClient &client = it->second;
+    NetClient *client = it->second;
     char buf[1024];
     ssize_t readbyte = recv(fd, buf, 1024, 0);
     if (readbyte > 0) {
       buf[readbyte] = '\0';
-      client.oss << buf;
-      enrollEvent(fd, EVFILT_READ, EV_ADD | EV_ONESHOT, 0, 0, NULL);
+      client->oss << buf;
+      std::cout << "Received data from client: " << fd << " - " << buf << std::endl;
+      enrollEvent(fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, NULL);
     } else if (readbyte <= 0) {
+      std::cout << "Client closed connection: " << fd << std::endl;
       if (readbyte < 0) perror("recv error\n");
       close(fd);
       clients.erase(fd);
@@ -81,22 +87,24 @@ void NetServer::readClient(int fd) {
 }
 
 void NetServer::writeClient(int fd) {
-  std::map<int, NetClient>::iterator it = clients.find(fd);
+  std::map<int, NetClient *>::iterator it = clients.find(fd);
   if (it != clients.end()) {
-    NetClient &client = it->second;
-    std::string data = client.oss.str();
+    NetClient *client = it->second;
+    std::string data = "Hello, client!";
+    // std::string data = client->oss.str();
     ssize_t sentBytes = send(fd, data.c_str(), data.size(), 0);
-    enrollEvent(fd, EVFILT_READ, EV_ADD | EV_ONESHOT, 0, 0, NULL);
+    std::cout << "Sent data to client: " << fd << " - " << data << std::endl;
 
     if (sentBytes == -1) {
       perror("send error\n");
       close(fd);
       clients.erase(fd);
-    } else {
-      // Clear the buffer after sending data
-      client.oss.str("");
-      client.oss.clear();
     }
+    // } else {
+    //   // Clear the buffer after sending data
+    //   client->oss.str("");
+    //   client->oss.clear();
+    // }
   }
 }
 

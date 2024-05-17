@@ -47,7 +47,7 @@ class NetServer {
   int nevents;
   int fd;
   struct kevent events[10];
-  std::map<int, NetClient> clients;
+  std::map<int, NetClient *> clients;
 };
 
 #endif

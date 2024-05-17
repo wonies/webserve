@@ -40,7 +40,6 @@ int main() {
     buffer[bytes_received] = '\0';
     std::cout << "Received from server: " << buffer << std::endl;
   }
-
   close(sock);
   return 0;
 }
