@@ -48,7 +48,6 @@ std::vector<std::string> split(const std::string &s, char deli) {
   return tokens;
 }
 
-
 std::string readfile(const std::string &filepath) {
   std::ifstream file("default.config");
   if (!file.is_open()) throw std::runtime_error("Failed to open file: ");

@@ -99,11 +99,6 @@ void NetServer::writeClient(int fd) {
       close(fd);
       clients.erase(fd);
     }
-    // } else {
-    //   // Clear the buffer after sending data
-    //   client->oss.str("");
-    //   client->oss.clear();
-    // }
   }
 }
 
