@@ -1,5 +1,6 @@
 #include <cctype>
 #include <fstream>
+#include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -105,22 +106,20 @@ config_t parse(const std::string &content) {
         _print(config);
       }
       serverblock = false;
+    } else if (serverblock) {
+      oss << line << "\n";
+      if (line.find("listen") != std::string::npos) {
+        std::vector<std::string> tokens = split(line, ' ');
+      }
     }
   }
-  else if (serverblock) {
-    oss << line << "\n";
-    if (line.find("listen") != std::string::npos) {
-      std::vector<std::string> tokens = split(line, ' ');
-    }
-  }
-}
 
-int main() {
-  try {
-    std::string content = readfile("default.config");
-    config_t config = parse(content);
-  } catch (const std::exception &ex) {
-    std::cerr << "Error : " << ex.what() << std::endl;
+  int main() {
+    try {
+      std::string content = readfile("default.config");
+      config_t config = parse(content);
+    } catch (const std::exception &ex) {
+      std::cerr << "Error : " << ex.what() << std::endl;
+    }
+    return 0;
   }
-  return 0;
-}
