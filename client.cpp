@@ -28,3 +28,16 @@ bool Client::writeData(const std::string &msg) {
   }
   return true;
 }
+
+
+ // 기존 클라이언트 소켓에서 데이터 읽기
+                    char buffer[1024];
+                    ssize_t bytesRead = recv(temp.ident, buffer, sizeof(buffer) - 1, 0);
+                    if (bytesRead > 0) {
+                        buffer[bytesRead] = '\0';
+                        std::cout << "Read " << bytesRead << " bytes from client socket " << temp.ident << ": " << buffer << std::endl;
+                    } else if (bytesRead == 0) {
+                        // 클라이언트 소켓 정상 종료
+                        std::cout << "Client socket " << temp.ident << " closed" << std::endl;
+                        close(temp.ident);
+                        clients.erase(temp.ident);

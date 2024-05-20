@@ -90,3 +90,26 @@ void NetworkServer::exit_error(const std::string &msg) {
 }
 
 NetworkServer::~NetworkServer() { close(_socket.ssocket); }
+
+
+
+
+
+
+void change_events(vector<struct kevent>& change_list, uintptr_t ident, int16_t filter,
+        uint16_t flags, uint32_t fflags, intptr_t data, void *udata)
+{
+    struct kevent temp_event;
+
+    EV_SET(&temp_event, ident, filter, flags, fflags, data, udata);
+    change_list.push_back(temp_event);
+}
+
+change_events(change_list, client_socket, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
+change_events(change_list, client_socket, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, NULL);
+
+
+    struct kevent kev;
+    EV_SET(&kev, ident, filter, flags , fflags, data, udata);
+    if (kevent(kq, &kev, 1, NULL, 0, NULL) == -1)
+        exit_error("Failed to register event with kqueue");

@@ -134,6 +134,8 @@ config_t parse(const std::string &content)
                     std::string portStr = tokens[1];
                     if (isNumber(portStr)) 
                     {
+                        if (config.listen.size() > 1)
+                            std::cout << "----listen----\n";
                         config.listen = std::atoi(portStr.c_str());
                         std::cout << "tokens : " << portStr;
                         std::cout << std::endl;

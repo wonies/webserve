@@ -9,7 +9,7 @@
 # define SIZE_BUF	2048
 
 typedef int							socket_t;
-typedef int							port_t;
+// typedef int							port_t;
 typedef int							pipe_t;
 typedef int							stat_t;
 

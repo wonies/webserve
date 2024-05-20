@@ -24,9 +24,9 @@ void NetServer::setupBind() {
   struct sockaddr_in saddr;
 
   memset(&saddr, 0, sizeof(saddr));
-  saddr.sin_family = AF_INET;
-  saddr.sin_addr.s_addr = htonl(INADDR_ANY);
-  saddr.sin_port = htons(8080);
+  saddr.sin_family = AF_INET; // ipv4
+  saddr.sin_addr.s_addr = htonl(INADDR_ANY); // ㅐㅔ주소
+  saddr.sin_port = htons(8080); //
   if (bind(sock, (struct sockaddr *)&saddr, sizeof(saddr)) == -1)
     exit_error("bind error");
   fcntl(sock, F_SETFL, O_NONBLOCK);  // non-blocking
@@ -76,12 +76,12 @@ void NetServer::readClient(int fd) {
       buf[readbyte] = '\0';
       client->oss << buf;
       std::cout << "Received data from client: " << fd << " - " << buf << std::endl;
-      enrollEvent(fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, NULL);
+      enrollEvent(fd, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, NULL);
     } else if (readbyte <= 0) {
       std::cout << "Client closed connection: " << fd << std::endl;
       if (readbyte < 0) perror("recv error\n");
-      close(fd);
-      clients.erase(fd);
+      // close(fd);
+      // clients.erase(fd);
     }
   }
 }
@@ -119,6 +119,7 @@ void NetServer::manageEvent() {
             exit_error("client create error");
           addClient(fd);
           enrollEvent(fd, EVFILT_READ, EV_ADD | EV_ONESHOT, 0, 0, NULL);
+          // enrollEvent(fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
         } else {
           readClient(temp.ident);
         }
