@@ -7,6 +7,7 @@
 
 #include "filter.hpp"
 #include "structure.hpp"
+void trim(std::string &s);
 
 std::vector<std::string> split(const std::string &s, char deli);
 
@@ -78,6 +79,7 @@ void _print(config_t config) {
     std::cout << std::endl;
   }
 }
+
 config_t parse(const std::string &content) {
   std::istringstream stream(content);
   std::ostringstream oss;
@@ -104,22 +106,60 @@ config_t parse(const std::string &content) {
       }
       if (serverblock) {
         _print(config);
-      }
-      serverblock = false;
-    } else if (serverblock) {
+        serverblock = false;
+      } else if (serverblock) {
       oss << line << "\n";
       if (line.find("listen") != std::string::npos) {
         std::vector<std::string> tokens = split(line, ' ');
+        if (tokens.size() > 1 && tokens[0] == "listen")
+        {
+          try{
+            size_t pos;
+            int port = std::stoi(tokens[1], &pos);
+            if (pos != tokens[1].size())
+              throw std::invalid_argument("Invalid port number");
+            config.listen = port;
+            std::cout << "tokens : " << tokens[1];
+            std::cout << std::endl;
+          }catch (const std::exception &ex)
+          {
+
+            throw std::runtime_error("Invalid 'listen' directive : " + tokens[1]);
+          }
+        }
+        else
+          throw std::runtime_error("Invalid 'listen directive");
+      }
+      else if (line.find("server_name") != std::string::npos)
+      {
+        std::vector<std::string> tokens = split(line, ' ');
+        if (tokens.size() > 1 && tokens[0] == "server_name")
+        {
+          for (size_t i = 1; i < tokens.size(); ++i)
+          {
+            int j = 0; 
+            std::string servername = tokens[i];
+            config.names.push_back(servername);
+            std::cout << "server name : " << servername << std::endl;
+            std::cout << "server config name : " << config.names[j++] << std::endl;
+          }
+        }
+        else 
+          throw std::runtime_error("Invalid server name directive!");
+      }
+
       }
     }
   }
+  return config;
+}
 
-  int main() {
-    try {
-      std::string content = readfile("default.config");
-      config_t config = parse(content);
-    } catch (const std::exception &ex) {
-      std::cerr << "Error : " << ex.what() << std::endl;
-    }
-    return 0;
+int main() {
+  try {
+    std::string content = readfile("default.config");
+    config_t config = parse(content);
+  } catch (const std::exception &ex) {
+    std::cerr << "Error : " << ex.what() << std::endl;
   }
+  return 0;
+}
