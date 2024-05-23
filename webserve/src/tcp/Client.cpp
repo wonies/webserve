@@ -10,59 +10,73 @@ Client::~Client() { close(_clientfd); }
 
 int Client::getfd() const { return _clientfd; }
 
+int* Client::clientptr() { return static_cast<int*>(&_clientfd); }
+
 void Client::request() {
+  char buf[SIZE_BUF];
   ssize_t byte = recv(_clientfd, buf, SIZE_BUF, 0);
 
-  std::clog << "-->POST2<--" << std::endl;
   if (byte <= 0) {
-    std::clog << "[REQUEST ERR_BYTE] : " << byte << std::endl;
     srv.disconnect(_clientfd);
     throw err_t("[REQUEST] : Falied to read/ [*ERR_BYTE*] [CLIENT->SERVER]");
   } else {
     try {
-      std::clog << "-->POST3<--" << std::endl;
-      if (Transaction::recvMsg(in, buf, byte)) {
-        std::clog << "-->POST4<--" << std::endl;
+      if (Transaction::recvMsg(in, buf,
+                               byte)) {  // cgi인지 아닌 지 판단해줌 ( header에
+                                         // 있음  => fork했으면 pid 값이 나옴)
         logging.fs << in.msg.str() << std::endl;
 
         if (!action) {
-          std::clog << "IN ACTION<---\n";
           action = new Transaction(*this);
-          std::clog << "--->NOT ACTION" << std::endl;
-          // if (subprocs.pid) {
-          //   srv.add_events(subprocs.pid, EVFILT_TIMER, EV_ADD | EV_ONESHOT,
-          //   0,
-          //                  30000, get_client_socket_ptr());
-          //   srv.add_events(subprocs.pid, EVFILT_PROC, EV_ADD | EV_ONESHOT,
-          //                  NOTE_EXIT, 0, get_client_socket_ptr());
-          // }
+
+          if (subprocs.pid) {
+            std::clog << "pid : " << subprocs.pid << std::endl;
+            // srv.add_events(subprocs.pid, EVFILT_TIMER, EV_ADD | EV_ONESHOT,
+            // 0,
+            //                30000, get_client_socket_ptr());
+            srv.setEvent(subprocs.pid, EVFILT_PROC, EV_ADD | EV_ONESHOT,
+                         NOTE_EXIT, 0, clientptr());
+            // void 향 포인터 -> pid ident. client_socket이 들어가야되는데......
+            // NOTE_EXIT -> event process가 종료될 때 이벤트를 발생한다?
+          }
         }
-        std::clog << "-->POST5<--" << std::endl;
 
         if (Transaction::recvBody(in, subprocs, buf, byte)) {
           logging.fs << in.body.str() << std::endl;
 
-          // if (!subprocs.pid) {
-          if (action) action->act();
-          std::clog << "[ACT] : check if it's in" << std::endl;
-          in.reset();
-          srv.setEvent(_clientfd, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0,
-                       NULL);
-          std::clog << "[SET COMPLETE]\n";
-          // }
-          // else
-          // close(subprocs.fd[W]);
+          if (!subprocs.pid) {
+            if (action) action->act();
+            in.reset();
+            srv.setEvent(_clientfd, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0,
+                         NULL);
+          } else
+            close(subprocs.fd[W]);  // pipe 가 있을 때 write event 지워줌
         }
+        std::clog << "request pid :  " << subprocs.pid << std::endl;
       }
-    }
-    // catch (errstat_t& err) {
-    //   Transaction::buildError(err.code, *this);
-    //   respond();
-    // }
+    } catch (errstat_t& err) {
+      log("HTTP\t: transaction: " + str_t(err.what()));
 
-    catch (const std::exception& e) {
-      std::clog << "ERROR\n";
-      std::cerr << e.what() << '\n';
+      in.reset();
+      out.reset();
+
+      Transaction::buildError(err.code, *this);
+      // setCgiCheck(TRUE);
+      action = NULL;
+      srv.setEvent(_clientfd, EVFILT_READ, EV_DELETE | EV_ONESHOT, 0, 0, NULL);
+      srv.setEvent(_clientfd, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, NULL);
+    }
+
+    catch (err_t& err) {
+      log("HTTP\t: Request: " + str_t(err.what()));
+
+      in.reset();
+
+      Transaction::buildError(400, *this);
+      action = NULL;
+      // setCgiCheck(TRUE);
+      srv.setEvent(_clientfd, EVFILT_READ, EV_DELETE | EV_ONESHOT, 0, 0, NULL);
+      srv.setEvent(_clientfd, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, NULL);
     }
   }
 }
@@ -116,10 +130,10 @@ void msg_buffer_s::reset() {
 process_s::process_s() { reset(); }
 
 void process_s::reset() {
-  // pid		= NONE;
+  pid = NONE;
   stat = NONE;
-  // fd[R]	= NONE;
-  // fd[W]	= NONE;
+  fd[R] = NONE;
+  fd[W] = NONE;
 
   argv.clear();
   env.clear();

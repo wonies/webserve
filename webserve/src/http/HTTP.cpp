@@ -165,7 +165,7 @@ location_s::location_s(const config_s& serverconf) {
   path = "/";
   root = serverconf.root;
 
-  cgi = FALSE;
+  cgi = TRUE;
   upload = "html/upload";
 
   index_auto = FALSE;

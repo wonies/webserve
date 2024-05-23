@@ -6,6 +6,7 @@
 #include <sstream>
 #include <string>
 
+#include "CGI.hpp"
 #include "Server.hpp"
 #include "utill.hpp"
 
@@ -24,7 +25,7 @@ class Client {
   int getfd() const;
   void request();
   bool respond();
-  
+
   msg_buffer_t in;
   msg_buffer_t out;
 
@@ -34,9 +35,9 @@ class Client {
   msg_buffer_t& get_in();
   const Server& server() const;
   // process_t& get_process();
-
+  int* clientptr();
   std::ostringstream oss;
-  char buf[SIZE_BUF];
+  // char buf[SIZE_BUF];
  private:
   Server& srv;
   int _clientfd;
