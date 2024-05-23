@@ -3,6 +3,7 @@
 // Client::Client() : _clientfd(-1) { return; }
 Client::Client(int fd, Server& connect_server)
     : action(NULL), srv(connect_server), _clientfd(fd) {
+  (void)fd;
   return;
 }
 
@@ -18,6 +19,7 @@ void Client::request() {
 
   std::clog << "POST2" << std::endl;
   if (byte <= 0) {
+    std::clog << "[REQUEST ERR_BYTE] : " << byte << std::endl;
     srv.disconnect(_clientfd);
     throw err_t("[REQUEST] : Falied to read [CLIENT->SERVER]");
   } else {
@@ -28,6 +30,7 @@ void Client::request() {
         logging.fs << in.msg.str() << std::endl;
 
         if (!action) {
+          std::clog << "IN ACTION<---\n";
           action = new Transaction(*this);
           std::clog << "NOT ACTION" << std::endl;
           // if (subprocs.pid) {
@@ -40,7 +43,7 @@ void Client::request() {
         }
         std::clog << "POST5" << std::endl;
 
-        if (Transaction::recvBody(*this, buf, byte)) {
+        if (Transaction::recvBody(in, subprocs, buf, byte)) {
           logging.fs << in.body.str() << std::endl;
 
           // if (!subprocs.pid) {
@@ -49,12 +52,19 @@ void Client::request() {
           in.reset();
           srv.setEvent(_clientfd, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0,
                        NULL);
+          std::clog << "[SET COMPLETE]\n";
           // }
           // else
           // close(subprocs.fd[W]);
         }
       }
-    } catch (const std::exception& e) {
+    }
+    // catch (errstat_t& err) {
+    //   Transaction::buildError(err.code, *this);
+    //   sendData();
+    // }
+
+    catch (const std::exception& e) {
       std::clog << "ERROR\n";
       std::cerr << e.what() << '\n';
     }

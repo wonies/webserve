@@ -2,7 +2,6 @@
 
 /* UTILL */ 
 bool	dead( const process_t& procs ) { return WEXITSTATUS( procs.stat ) != EXIT_SUCCESS; }
-// bool	dead( const process_t& procs ) { return WEXITSTATUS( procs.stat ) == EXIT_SUCCESS; }
 bool	found( const size_t& pos ) { return pos != str_t::npos; }
 
 str_t
@@ -129,7 +128,7 @@ errpageScript( sstream_t& page, const uint_t& status, const str_t& explanation )
 	"<div class=\"container\">\n"
 	"<h1>HTTP responsing with error state</h1>\n"
 	"<div class=\"image-container\">"
-    "<img src=\"favicon.ico\" alt=\"Image\">"
+    "<img src=\"/favicon.ico\" alt=\"Image\">"
 	"</div>"
 	"<p><strong>Status Code:</strong> " << status << "</p>\n" <<
 	"<p><strong>Explanation:</strong> " << explanation << "</p>\n" <<

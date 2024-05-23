@@ -29,6 +29,12 @@ Transaction::connection( void ) {
 Transaction::Transaction( Client& client ): _cl( client ), _rqst( client ) {
 	log( "HTTP\t: constructing Transaction" );
 
+	if ( !getInfo( _rqst.line().uri, _rqst.info ) && _rqst.location().rewrite.empty() ) {
+		if ( errno == 2 ) throw errstat_t( 404, err_msg[SOURCE_NOT_FOUND] );
+		if ( errno == 20 ) throw errstat_t( 404, err_msg[SOURCE_NOT_DIR] );
+		else throw errstat_t( 500 );
+	}
+ 
 	_setBodyEnd();
 	if ( _invokeCGI( _rqst, _cl.subprocs ) ) CGI::proceed( _rqst, _cl.subprocs );
 }
@@ -48,7 +54,7 @@ Transaction::_setBodyEnd( void ) {
 
 bool
 Transaction::_invokeCGI( const Request& rqst, process_t& procs ) {
-	if ( !rqst.location().cgi || isDir( rqst.info ) ) return FALSE;
+	if ( !rqst.location().cgi || isDir( rqst.info ) || !isExist( rqst.line().uri ) ) return FALSE;
 
 	size_t	dot = rqst.line().uri.rfind( '.' );
 	str_t	ext;
@@ -85,7 +91,6 @@ Transaction::recvMsg( msg_buffer_t& in, const char* buf, ssize_t& byte_read ) {
 		if ( !found( pos_header_end ) ) in.msg_read += byte_read;
 		else {
 			in.msg_done = TRUE;
-			logging.fs << in.msg.str() << std::endl;
 
 			size_t body_begin	= pos_header_end - in.msg_read + SIZE_MSG_END;
 			in.body_read		= byte_read - body_begin;
@@ -100,51 +105,52 @@ Transaction::recvMsg( msg_buffer_t& in, const char* buf, ssize_t& byte_read ) {
 }
 
 bool
-// Transaction::recvBody( msg_buffer_t& in, const process_t& procs, const char* buf, const ssize_t& byte_read ) 
-Transaction::recvBody( Client &cl,  const char* buf, const ssize_t& byte_read ) 
-{
+Transaction::recvBody( msg_buffer_t& in, const process_t& procs, const char* buf, const ssize_t& byte_read ) {
 	// Keep FALSE untill meet the content-length or tail of chunk (0CRLFCRLF)
-	if ( !cl.in.chunk ) return _recvBodyPlain( cl, buf, byte_read );
+	if ( !in.chunk ) return _recvBodyPlain( in, procs, buf, byte_read );
 	else {
-		if ( byte_read == 0 && cl.in.body_read ) return _recvBodyChunkPredata( cl ); 	
-		return _recvBodyChunk( cl, buf );
+		if ( byte_read == 0 && in.body_read ) return _recvBodyChunkPredata( in, procs ); 	
+		return _recvBodyChunk( in, procs, buf );
 	}
 }
 
 bool
-Transaction::_recvBodyPlain( Client& cl, const char* buf, const ssize_t& byte_read ) {
-	cl.in.body_read += byte_read;
+Transaction::_recvBodyPlain( msg_buffer_t& in, const process_t& procs, const char* buf, const ssize_t& byte_read ) {
+	in.body_read += byte_read;
 
-	if ( !cl.subprocs.pid )
-		cl.in.body.write( buf, byte_read );
+	if ( !procs.pid )
+		in.body.write( buf, byte_read );
 
-	else if ( !dead( cl.subprocs ) ) {
-		if ( byte_read == 0 && cl.in.body_read )
-			CGI::writeTo( cl.subprocs, cl.in.body.str().c_str(), cl.in.body_read );
+	else if ( !dead( procs ) ) {
+		if ( byte_read == 0 && in.body_read )
+			CGI::writeTo( procs, in.body.str().c_str(), in.body_read );
 		else
-			CGI::writeTo( cl.subprocs, buf, byte_read );
+			CGI::writeTo( procs, buf, byte_read );
 	}
 
-	if ( cl.in.body_read ) {
+	else return TRUE;
+
+	if ( in.body_read ) {
 		osstream_t oss;
-		oss << "TCP\t: body read by " << byte_read << " so far: " << cl.in.body_read << " / " << cl.in.body_size << std::endl;
+
+		oss << "TCP\t: body read by " << byte_read <<
+		" so far: " << in.body_read << " / " << in.body_size << std::endl;
 		log( oss.str() );
 	}
 
-	std::clog << "recvBody checking " << cl.in.body_size << ", " << cl.in.body_read << std::endl;
-	return cl.in.body_size == cl.in.body_read;
+	return in.body_size == in.body_read;
 }
 
 bool
-Transaction::_recvBodyChunk( Client & cl, const char* buf ) {
+Transaction::_recvBodyChunk( msg_buffer_t& in, const process_t& procs, const char* buf ) {
 	isstream_t	iss( buf );
 
-	if ( cl.in.incomplete && _recvBodyChunkIncomplete( cl, iss ) ) return TRUE;
-	return _recvBodyChunkData( cl, iss );
+	if ( in.incomplete && _recvBodyChunkIncomplete( in, procs, iss ) ) return TRUE;
+	return _recvBodyChunkData( in, procs, iss );
 }
 
 bool
-Transaction::_recvBodyChunkData( Client& cl, isstream_t& iss ) {
+Transaction::_recvBodyChunkData( msg_buffer_t& in, const process_t& procs, isstream_t& iss ) {
 	char		data[SIZE_BUFF];
 	
 	ssize_t		frac = 1;
@@ -155,18 +161,16 @@ Transaction::_recvBodyChunkData( Client& cl, isstream_t& iss ) {
 
 		if ( iss.fail() || frac > SIZE_BUFF ) throw errstat_t( 400 );
 
-		left = iss.str().size();
-		if ( left < frac + SIZE_CRLF ) cl.in.incomplete = frac + SIZE_CRLF - left;
+		left = streamsize( iss );
+		if ( left < frac + SIZE_CRLF ) in.incomplete = frac + SIZE_CRLF - left;
 		if ( left < frac ) frac = left;
 
 		iss.read( data, frac );
-		if ( !cl.subprocs.pid ) cl.in.body.write( data, frac );
-		else if ( !dead( cl.subprocs ) ) {CGI::writeTo( cl.subprocs, data, frac );}
+		if ( !procs.pid ) in.body.write( data, frac );
+		else if ( !dead( procs ) ) CGI::writeTo( procs, data, frac );
 		else return TRUE;
 
-		
-	
-		if ( cl.in.incomplete ) break;
+		if ( in.incomplete ) break;
 
 		iss >> std::ws;
 	}
@@ -174,27 +178,26 @@ Transaction::_recvBodyChunkData( Client& cl, isstream_t& iss ) {
 }
 
 bool
-Transaction::_recvBodyChunkPredata( Client& cl ) {
-	isstream_t	iss( cl.in.body.str() );
+Transaction::_recvBodyChunkPredata( msg_buffer_t& in, const process_t& procs ) {
+	isstream_t	iss( in.body.str() );
 
-	cl.in.body.str( "" );
-	cl.in.body.clear();
+	in.body.str( "" );
+	in.body.clear();
 
-	return _recvBodyChunkData( cl, iss );
+	return _recvBodyChunkData( in, procs, iss );
 }
 
 bool
-Transaction::_recvBodyChunkIncomplete(Client& cl, isstream_t& iss ) {
+Transaction::_recvBodyChunkIncomplete( msg_buffer_t& in, const process_t& procs, isstream_t& iss ) {
 	char data[SIZE_BUFF];
 
-	iss.read( data, cl.in.incomplete );
-	if ( !cl.subprocs.pid ) cl.in.body.write( data, cl.in.incomplete );
-	else if ( !dead( cl.subprocs ) ) CGI::writeTo( cl.subprocs, data, cl.in.incomplete );
+	iss.read( data, in.incomplete );
+	if ( !procs.pid ) in.body.write( data, in.incomplete );
+	else if ( !dead( procs ) ) CGI::writeTo( procs, data, in.incomplete );
 	else return TRUE;
 
-
 	iss >> std::ws;
-	cl.in.incomplete = 0;
+	in.incomplete = 0;
 
 	return FALSE;
 }

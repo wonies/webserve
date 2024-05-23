@@ -14,7 +14,7 @@ class Transaction {
 		connection_e		connection( void );			
 
 		static bool			recvMsg( msg_buffer_t&, const char*, ssize_t& );
-		static bool 		recvBody( Client & ,const char* , const ssize_t&  );
+		static bool			recvBody( msg_buffer_t&, const process_t&, const char*, const ssize_t& );
 
 		static void			build( const Response&, msg_buffer_t& );
 		static void			buildError( const uint_t&, Client& );
@@ -27,11 +27,11 @@ class Transaction {
 		Request				_rqst;
 		Response			_rspn;
 
-		static bool			_recvBodyPlain(Client& , const char*, const ssize_t& );
-		static bool			_recvBodyChunk( Client& , const char* );
-		static bool			_recvBodyChunkData( Client &, isstream_t& );
-		static bool			_recvBodyChunkPredata(Client & );
-		static bool			_recvBodyChunkIncomplete(Client &, isstream_t& );
+		static bool			_recvBodyPlain( msg_buffer_t&, const process_t&, const char*, const ssize_t& );
+		static bool			_recvBodyChunk( msg_buffer_t&, const process_t&, const char* );
+		static bool			_recvBodyChunkData( msg_buffer_t&, const process_t&, isstream_t& );
+		static bool			_recvBodyChunkPredata( msg_buffer_t&, const process_t& );
+		static bool			_recvBodyChunkIncomplete( msg_buffer_t&, const process_t&, isstream_t& );
 
 		static void			_buildLine( const Response&, sstream_t& );
 		static void			_buildHeader( const Response&, sstream_t& );
