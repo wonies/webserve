@@ -12,35 +12,31 @@ class Server : public ASocket {
   Server(const vec_config_t &);
   ~Server();
 
-  void enterKqueue();
-  void exit_error(const std::string &);
-  void createKqueue();
-  void setEvent(uintptr_t ident, int16_t filter, uint16_t flags,
-                uint32_t fflags, intptr_t data, void *udata);
-
-  void manageEvent();
-  void serverEvent();
-  void addClient(int);
-  // void readClient(int fd);
-  void writeClient(int);
-  int takeEvents();
-  void _read(struct kevent &);
-  void readConnect();
-  void readClient(struct kevent &);
-  void readCgi(struct kevent &);
-
-  void disconnect(int);
   const vec_config_t &config(void) const { return _confs; }
   const config_t &configDefault(void) const { return _confs.at(0); }
-  void run();
+
+  //preset kqueue & server
   void preset();
   void _kqueue();
   void _server();
-  int takeEvent();
+  //utils
+  void disconnect(int);
+  void setEvent(uintptr_t ident, int16_t filter, uint16_t flags,
+                uint32_t fflags, intptr_t data, void *udata);
+  
+  //event run
+  void run();
+
+  //run inter
+  int _cnttake();
+  void _read(struct kevent &);
   void _write(struct kevent &);
+  
+
+  //_read
   void connectEvent();
   void clientEvent(struct kevent &);
-  void _write(int);
+  void addClient(int);
 
  private:
   int kq;

@@ -65,7 +65,7 @@ void CGI::wait(process_t& procs) {
 void CGI::readFrom(const process_t& procs, sstream_t& out_body) {
   c_buffer_t buf;
 
-  while ((buf.read = read(procs.fd[R], buf.ptr, SIZE_BUFF)) > 0) {
+  while ((buf.read = read(procs.fd[R], buf.ptr, SIZE_BUF)) > 0) {
     out_body.write(buf.ptr, buf.read);
     buf.total += buf.read;
   }

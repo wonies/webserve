@@ -6,7 +6,7 @@
 # define FALSE		0
 # define TRUE		1
 
-# define SIZE_BUFF	1024
+# define SIZE_BUF	1024
 
 typedef int							socket_t;
 typedef int							port_t;
@@ -61,7 +61,7 @@ typedef std::map<str_t, path_t>		map_str_path_t;
 typedef struct c_buffer_s {
 	c_buffer_s( void );
 	
-	char		ptr[SIZE_BUFF];
+	char		ptr[SIZE_BUF];
 
 	size_t		total;
 	ssize_t		read;

@@ -88,15 +88,15 @@ void Server::_write(struct kevent &event) {
   std::map<int, Client *>::iterator it = clients.find(fds);
   if (it != clients.end()) {
     Client *client = it->second;
-    client->sendData();
-    if (!(it->second->sendData())) {
+    client->respond();
+    if (!(it->second->respond())) {
       disconnect(fds);
       std::clog << "_write disconnect" << std::endl;
     }
   }
 }
 
-int Server::takeEvent() {
+int Server::_cnttake() {
   int nevent;
   nevent = kevent(kq, NULL, 0, &events[0], 10, NULL);
   if (nevent == -1) throw("Failed to take place a event");
@@ -105,7 +105,7 @@ int Server::takeEvent() {
 
 void Server::run() {
   while (true) {
-    nevents = takeEvent();
+    nevents = _cnttake();
     for (int i = 0; i < nevents; ++i) {
       struct kevent &temp = events[i];
       if (temp.filter == EVFILT_READ)

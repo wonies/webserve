@@ -151,7 +151,7 @@ Transaction::_recvBodyChunk( msg_buffer_t& in, const process_t& procs, const cha
 
 bool
 Transaction::_recvBodyChunkData( msg_buffer_t& in, const process_t& procs, isstream_t& iss ) {
-	char		data[SIZE_BUFF];
+	char		data[SIZE_BUF];
 	
 	ssize_t		frac = 1;
 	ssize_t		left;
@@ -159,7 +159,7 @@ Transaction::_recvBodyChunkData( msg_buffer_t& in, const process_t& procs, isstr
 	while ( frac ) {
 		iss >> std::hex >> frac >> std::ws;
 
-		if ( iss.fail() || frac > SIZE_BUFF ) throw errstat_t( 400 );
+		if ( iss.fail() || frac > SIZE_BUF ) throw errstat_t( 400 );
 
 		left = streamsize( iss );
 		if ( left < frac + SIZE_CRLF ) in.incomplete = frac + SIZE_CRLF - left;
@@ -189,7 +189,7 @@ Transaction::_recvBodyChunkPredata( msg_buffer_t& in, const process_t& procs ) {
 
 bool
 Transaction::_recvBodyChunkIncomplete( msg_buffer_t& in, const process_t& procs, isstream_t& iss ) {
-	char data[SIZE_BUFF];
+	char data[SIZE_BUF];
 
 	iss.read( data, in.incomplete );
 	if ( !procs.pid ) in.body.write( data, in.incomplete );
