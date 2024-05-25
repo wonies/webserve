@@ -170,6 +170,8 @@ void Server::run() {
       else if (temp.filter == EVFILT_PROC) {
         std::clog << "proc test\n";
         _proc(temp);
+      else if (temp.filter == EVFILT_TIMER )
+        _timer(temp);
       }
     }
   }

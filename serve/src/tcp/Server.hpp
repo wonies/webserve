@@ -32,6 +32,7 @@ class Server : public ASocket {
   void _read(struct kevent &);
   void _write(struct kevent &);
   void _proc(struct kevent &);
+  void _timer(struct kevent &);
   bool eventerr(struct kevent &);
   void confset(vec_config_t &);
 
@@ -40,6 +41,7 @@ class Server : public ASocket {
   void clientEvent(struct kevent &);
   void addClient(int);
 
+  bool timing;
  private:
   int kq;
   int nevents;

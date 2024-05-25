@@ -1,6 +1,6 @@
 #include "Server.hpp"
 
-Server::Server(const vec_config_t &confs) : events(10), _confs(confs) {
+Server::Server(const vec_config_t &confs) :timing(FALSE), events(10),  _confs(confs) {
   preset();
 }
 
@@ -31,12 +31,24 @@ void Server::_server(int port) {
 
 void Server::setEvent(uintptr_t ident, int16_t filter, uint16_t flags,
                       uint32_t fflags, intptr_t data, void *udata) {
-  struct kevent kev;
-  EV_SET(&kev, ident, filter, flags, fflags, data, udata);
-  std::clog << "[EV] flag : " << filter << std::endl;
-  if (kevent(kq, &kev, 1, NULL, 0, NULL) == -1) {
-    throw err_t("[EVENT] : Failed to register events");
-  }
+    struct kevent kev;
+    EV_SET(&kev, ident, filter, flags, fflags, data, udata);
+    
+    // 자세한 로그 출력
+    std::clog << "[EV] ident: " << ident
+              << ", filter: " << filter
+              << ", flags: " << flags
+              << ", fflags: " << fflags
+              << ", data: " << data
+              << ", udata: " << udata
+              << std::endl;
+    // kevent 호출
+    if (kevent(kq, &kev, 1, NULL, 0, NULL) == -1) {
+        std::cerr << "Failed to register events: " << strerror(errno) << std::endl;
+    } else {
+        std::clog << "Event registered successfully: ident=" << ident
+                  << ", filter=" << filter << std::endl;
+    }
 }
 
 void Server::disconnect(int) {
@@ -61,6 +73,8 @@ void Server::connectEvent() {
     throw err_t("Failed to accept socket fd");
   addClient(fd);
   setEvent(fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
+  setEvent(fd, EVFILT_TIMER, EV_ADD, 0, 30000, NULL);
+  timing= TRUE;
 }
 
 void Server::clientEvent(struct kevent &event) {
@@ -105,13 +119,32 @@ void Server::_read(struct kevent &event) {
 void Server::_write(struct kevent &event) {
   int fds = event.ident;
   std::map<int, Client *>::iterator it = clients.find(fds);
+  Client &_client = *it->second;
   if (it != clients.end()) {
-    if (!(it->second->respond())) {
+    if (!(_client.respond())) {
       disconnect(fds);
       std::clog << "_write disconnect" << std::endl;
       return;
     }
   }
+  if (_client.subprocs.pid && _client.errorid())
+  {
+    std::clog << "----kill------;\n";
+    kill(_client.subprocs.pid,SIGTERM);
+    _client.checkError( FALSE );
+    return ;
+  }
+  if ((!(_client.subprocs.pid)) && _client.errorid())
+  {
+    disconnect(fds);
+    return ;
+  }
+  if (_client.action != NULL && _client.action->connection() == 1)
+  {
+    disconnect(fds);
+    return ;
+  }
+  
 }
 
 void Server::_proc(struct kevent &event) {
@@ -123,7 +156,6 @@ void Server::_proc(struct kevent &event) {
   std::map<int, Client *>::iterator it = clients.find(client);
   Client &cl = *it->second;
   try {
-    // process_t &procs = it->second->get_process();
     CGI::wait(cl.subprocs);
     // it->second->setCgiExit(TRUE);
     if (WEXITSTATUS(cl.subprocs.stat) != EXIT_SUCCESS) {
@@ -134,10 +166,8 @@ void Server::_proc(struct kevent &event) {
 
     cl.in.reset();
     cl.subprocs.reset();
-    // cl.setCgiExit(FALSE);
-
     // std::clog << event.ident << std::endl;
-    // add_events(event.ident, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
+    setEvent(event.ident, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
     // setEvent(event.ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
     // setEvent(client, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
     setEvent(client, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, NULL);
@@ -149,14 +179,65 @@ void Server::_proc(struct kevent &event) {
     cl.out.reset();
     close(cl.subprocs.fd[R]);
     Transaction::buildError(e.code, cl);
-
-    // cl.setCgiCheck(TRUE);
+    cl.checkError(TRUE);
 
     // setEvent(cl.subprocs.pid, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
     // setEvent(event.ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
     setEvent(client, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, NULL);
   }
 }
+
+
+void Server::_timer(struct kevent &event)
+{
+// timer가 끝났을 때.. 이상이 있다.... 무슨 이상이 있을까? 30초가 들어와서 온거니까...
+  int udata = 0;
+  int fd = event.ident;
+  if ( event.udata != NULL )
+    udata = *(static_cast<int *>( event.udata ));
+  std::map<int, Client *>::iterator it = clients.find( fd );
+  try
+  {
+    if (it != clients.end())
+    {
+      throw errstat_t( 503, "Time out request on HTTP" );
+    }
+    else if (event.udata != NULL)
+    {
+      setEvent( event.ident, EVFILT_READ, EV_DELETE, 0, 0, NULL );
+      setEvent( event.ident, EVFILT_TIMER,EV_DELETE, 0, 0, NULL );
+      throw errstat_t( 503, "Time out request IN CGI" );
+    }
+  }
+  catch (const errstat_t& e) {
+		log( "TCP\t: " + str_t( e.what() ) );
+    if (it != clients.end()) 
+    {    
+      Client& cl = *it->second;
+      cl.checkError(TRUE);
+      cl.out.reset();
+      Transaction::buildError( e.code, cl );
+      setEvent( event.ident, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, NULL );
+      return ;
+    }
+    else if (event.udata != NULL) 
+    {
+      it = clients.find( udata );
+      if (it != clients.end() && it->second != NULL) {
+        Client& cl = *it->second;
+        cl.checkError(TRUE);
+        if (cl.subprocs.pid) {
+          cl.out.reset();
+          Transaction::buildError( e.code, cl );
+      }
+      setEvent( udata, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, NULL );
+      }
+    }
+  }
+}
+
+
+
 
 void Server::confset(vec_config_t &conf) {
   vec_config_t::iterator it = conf.begin();
@@ -178,9 +259,10 @@ void Server::run(vec_config_t &conf) {
         _read(temp);
       else if (temp.filter == EVFILT_WRITE)
         _write(temp);
-      else if (temp.filter == EVFILT_PROC) {
+      else if (temp.filter == EVFILT_PROC)
         _proc(temp);
-      }
+      else if (temp.filter == EVFILT_TIMER)
+        _timer(temp);
     }
   }
 }

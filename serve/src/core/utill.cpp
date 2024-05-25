@@ -2,6 +2,7 @@
 
 /* UTILL */ 
 bool	dead( const process_t& procs ) { return WEXITSTATUS( procs.stat ) != EXIT_SUCCESS; }
+// bool	dead( const process_t& procs ) { return WEXITSTATUS( procs.stat ) == EXIT_SUCCESS; } // cgi-timer error check
 bool	found( const size_t& pos ) { return pos != str_t::npos; }
 
 str_t

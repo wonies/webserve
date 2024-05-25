@@ -37,11 +37,13 @@ class Client {
   // process_t& get_process();
   int* clientptr();
   std::ostringstream oss;
-  // char buf[SIZE_BUF];
+  void checkError( bool );
+  bool errorid();
+  
  private:
   Server& srv;
   int _clientfd;
-  bool _throwid;
+  bool _errorid;
 };
 
 #endif

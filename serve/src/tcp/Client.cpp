@@ -1,7 +1,7 @@
 #include "Client.hpp"
 
 Client::Client(int fd, Server& connect_server)
-    : action(NULL), srv(connect_server), _clientfd(fd) {
+    : action(NULL), srv(connect_server), _clientfd(fd), _errorid(-1) {
   (void)fd;
   return;
 }
@@ -11,6 +11,17 @@ Client::~Client() { close(_clientfd); }
 int Client::getfd() const { return _clientfd; }
 
 int* Client::clientptr() { return static_cast<int*>(&_clientfd); }
+
+
+bool Client::errorid()
+{
+  return _errorid;
+}
+
+void Client::checkError( bool val )
+{
+  _errorid = val;
+}
 
 void Client::request() {
   char buf[SIZE_BUF];
@@ -31,12 +42,11 @@ void Client::request() {
 
           if (subprocs.pid) {
             std::clog << "pid : " << subprocs.pid << std::endl;
-            // srv.add_events(subprocs.pid, EVFILT_TIMER, EV_ADD | EV_ONESHOT,
-            // 0,
-            //                30000, get_client_socket_ptr());
+            srv.setEvent(subprocs.pid, EVFILT_TIMER, EV_ADD | EV_ONESHOT,
+            0, 10000, clientptr());
             srv.setEvent(subprocs.pid, EVFILT_PROC, EV_ADD | EV_ONESHOT,
                          NOTE_EXIT, 0, clientptr());
-            // void 향 포인터 -> pid ident. client_socket이 들어가야되는데......
+            // void포인터 -> pid ident. client_socket이 들어가야되는데......
             // NOTE_EXIT -> event process가 종료될 때 이벤트를 발생한다?
           }
         }
@@ -49,10 +59,14 @@ void Client::request() {
             in.reset();
             srv.setEvent(_clientfd, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0,
                          NULL);
+            if ( srv.timing == TRUE )
+            {
+              srv.setEvent(_clientfd, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
+              srv.timing = FALSE;
+            }
           } else
             close(subprocs.fd[W]);  // pipe 가 있을 때 write event 지워줌
         }
-        std::clog << "request pid :  " << subprocs.pid << std::endl;
       }
     } catch (errstat_t& err) {
       log("HTTP\t: transaction: " + str_t(err.what()));
@@ -61,8 +75,10 @@ void Client::request() {
       out.reset();
 
       Transaction::buildError(err.code, *this);
-      // setCgiCheck(TRUE);
+      checkError(TRUE);
       action = NULL;
+      if (subprocs.pid)
+        srv.setEvent(subprocs.pid, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
       srv.setEvent(_clientfd, EVFILT_READ, EV_DELETE | EV_ONESHOT, 0, 0, NULL);
       srv.setEvent(_clientfd, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, NULL);
     }
@@ -74,7 +90,9 @@ void Client::request() {
 
       Transaction::buildError(400, *this);
       action = NULL;
-      // setCgiCheck(TRUE);
+      checkError(TRUE);
+      if (subprocs.pid)
+        srv.setEvent(subprocs.pid, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
       srv.setEvent(_clientfd, EVFILT_READ, EV_DELETE | EV_ONESHOT, 0, 0, NULL);
       srv.setEvent(_clientfd, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, NULL);
     }
