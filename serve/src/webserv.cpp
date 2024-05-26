@@ -1,5 +1,5 @@
 #include "webserv.hpp"
-
+void run(const int& argc, char* const argv[]) ;
 int main(int argc, char* argv[]) {
   try {
     if (argc == 1 || argc == 2) run(argc, argv);

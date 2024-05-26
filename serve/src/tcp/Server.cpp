@@ -15,7 +15,7 @@ Server::~Server() {
 }
 
 void Server::preset() {
-  _time.tv_sec = 100; // 이벤트 간의 간격 다음 이벤트는 1
+  _time.tv_sec = 100; // 이벤트 간의 간격 다음 이벤트는 100초안에는 무조건 발생시킨다.
   _kqueue();
 }
 
@@ -83,7 +83,7 @@ void Server::clientEvent(struct kevent &event) {
     Client *tmp = it->second;
     tmp->request();
   } else
-    std::clog << "Client not FOUND : " << event.ident << std::endl;
+    std::clog << "Client not FOUND : " << event.ident << std::endl; // * 수정 부분 ! 
 }
 
 bool Server::eventerr(struct kevent &event) {
@@ -151,7 +151,7 @@ void Server::_proc(struct kevent &event) {
   std::map<int, Client *>::iterator it = clients.find(client);
   Client &cl = *it->second;
   try {
-    CGI::wait(cl.subprocs);
+    // CGI::wait(cl.subprocs);
     // it->second->setCgiExit(TRUE);
     if (WEXITSTATUS(cl.subprocs.stat) != EXIT_SUCCESS) {
       throw errstat_t(500, "the CGI failed to exit as SUCCESS");
@@ -161,7 +161,6 @@ void Server::_proc(struct kevent &event) {
 
     cl.in.reset();
     cl.subprocs.reset();
-    // std::clog << event.ident << std::endl;
     setEvent(event.ident, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
     // setEvent(event.ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
     // setEvent(client, EVFILT_TIMER, EV_DELETE, 0, 0, NULL); // client_timer ...... 

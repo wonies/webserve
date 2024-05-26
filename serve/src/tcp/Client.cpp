@@ -112,9 +112,7 @@ bool Client::respond() {
   if (bytesSent < 0) return false;
   if (out.body.str().size()) {
     length = out.body.str().size();
-
     logging.fs << out.body.str() << "\n" << std::endl;
-
     bytesSent = send(_clientfd, out.body.str().c_str(), length, 0);
     if (bytesSent < 0) return false;
   }
