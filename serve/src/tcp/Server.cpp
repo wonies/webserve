@@ -233,9 +233,6 @@ void Server::_timer(struct kevent &event)
   }
 }
 
-
-
-
 void Server::confset(vec_config_t &conf) {
   vec_config_t::iterator it = conf.begin();
   vec_config_t::iterator endit = conf.end();

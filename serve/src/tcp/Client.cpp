@@ -81,22 +81,23 @@ void Client::request() {
       action = NULL;
       if (subprocs.pid)
         srv.setEvent(subprocs.pid, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
+      //이 부분도 timer있어야하는 거 아닌가???
       srv.setEvent(_clientfd, EVFILT_READ, EV_DELETE | EV_ONESHOT, 0, 0, NULL); 
       srv.setEvent(_clientfd, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, NULL);
+      srv.setEvent(_clientfd, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
     }
-
     catch (err_t& err) {
       log("HTTP\t: Request: " + str_t(err.what()));
-
       in.reset();
-
       Transaction::buildError(400, *this);
-      action = NULL;
       checkError(TRUE);
+      action = NULL;
       if (subprocs.pid)
         srv.setEvent(subprocs.pid, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
+      //이 부분도 timer있어야하는거아닌가?
       srv.setEvent(_clientfd, EVFILT_READ, EV_DELETE | EV_ONESHOT, 0, 0, NULL);
       srv.setEvent(_clientfd, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, NULL);
+      srv.setEvent(_clientfd, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
     }
   }
 }
@@ -121,11 +122,9 @@ bool Client::respond() {
   out.reset();
   if (action != NULL && action->connection() == 1)
   {
-    disconnect(_clientfd);
-    return ;
+    srv.disconnect(_clientfd);
+    return false;
   }
-  
-
   if (action) {
     delete action;
     action = NULL;
