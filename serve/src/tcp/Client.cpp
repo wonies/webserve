@@ -1,8 +1,7 @@
 #include "Client.hpp"
 
 Client::Client(int fd, Server& connect_server)
-    : action(NULL), srv(connect_server), _clientfd(fd), _errorid(-1) {
-  (void)fd;
+    : action(NULL), srv(connect_server), _clientfd(fd), _errorid(FALSE) {
   return;
 }
 
@@ -26,11 +25,14 @@ void Client::checkError( bool val )
 void Client::request() {
   char buf[SIZE_BUF];
   ssize_t byte = recv(_clientfd, buf, SIZE_BUF, 0);
+  std::clog << "\nbyte-----\n" << byte << std::endl;
+  std::clog << "\nbuf-----\n" << buf << std::endl;
 
   if (byte <= 0) {
-    srv.disconnect(_clientfd);
-    throw err_t("[REQUEST] : Falied to read/ [*ERR_BYTE*] [CLIENT->SERVER]");
-  } else {
+    srv.disconnect(_clientfd); // ? 
+    return ;
+    } 
+    else {
     try {
       if (Transaction::recvMsg(in, buf,
                                byte)) {  // cgi인지 아닌 지 판단해줌 ( header에
@@ -79,7 +81,7 @@ void Client::request() {
       action = NULL;
       if (subprocs.pid)
         srv.setEvent(subprocs.pid, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
-      srv.setEvent(_clientfd, EVFILT_READ, EV_DELETE | EV_ONESHOT, 0, 0, NULL);
+      srv.setEvent(_clientfd, EVFILT_READ, EV_DELETE | EV_ONESHOT, 0, 0, NULL); 
       srv.setEvent(_clientfd, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, NULL);
     }
 
@@ -117,6 +119,12 @@ bool Client::respond() {
   }
 
   out.reset();
+  if (action != NULL && action->connection() == 1)
+  {
+    disconnect(_clientfd);
+    return ;
+  }
+  
 
   if (action) {
     delete action;

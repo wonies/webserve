@@ -15,7 +15,7 @@ Server::~Server() {
 }
 
 void Server::preset() {
-  _time.tv_sec = 100;
+  _time.tv_sec = 100; // 이벤트 간의 간격 다음 이벤트는 1
   _kqueue();
 }
 
@@ -74,7 +74,7 @@ void Server::connectEvent() {
   addClient(fd);
   setEvent(fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
   setEvent(fd, EVFILT_TIMER, EV_ADD, 0, 30000, NULL);
-  timing= TRUE;
+  timing = TRUE;
 }
 
 void Server::clientEvent(struct kevent &event) {
@@ -139,12 +139,7 @@ void Server::_write(struct kevent &event) {
     disconnect(fds);
     return ;
   }
-  if (_client.action != NULL && _client.action->connection() == 1)
-  {
-    disconnect(fds);
-    return ;
-  }
-  
+
 }
 
 void Server::_proc(struct kevent &event) {
@@ -169,7 +164,7 @@ void Server::_proc(struct kevent &event) {
     // std::clog << event.ident << std::endl;
     setEvent(event.ident, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
     // setEvent(event.ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-    // setEvent(client, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
+    // setEvent(client, EVFILT_TIMER, EV_DELETE, 0, 0, NULL); // client_timer ...... 
     setEvent(client, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, NULL);
   }
 
@@ -196,6 +191,7 @@ void Server::_timer(struct kevent &event)
   if ( event.udata != NULL )
     udata = *(static_cast<int *>( event.udata ));
   std::map<int, Client *>::iterator it = clients.find( fd );
+  it = clients.find(fd);
   try
   {
     if (it != clients.end())
@@ -228,6 +224,7 @@ void Server::_timer(struct kevent &event)
         cl.checkError(TRUE);
         if (cl.subprocs.pid) {
           cl.out.reset();
+          cl.checkError(TRUE);
           Transaction::buildError( e.code, cl );
       }
       setEvent( udata, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, NULL );
