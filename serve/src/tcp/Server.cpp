@@ -34,10 +34,6 @@ void Server::setEvent(uintptr_t ident, int16_t filter, uint16_t flags,
                       uint32_t fflags, intptr_t data, void *udata) {
   struct kevent kev;
   EV_SET(&kev, ident, filter, flags, fflags, data, udata);
-  // 자세한 로그 출력
-  // std::clog << "[EV] ident: " << ident << ", filter: " << filter
-  //           << ", flags: " << flags << ", fflags: " << fflags
-  //           << ", data: " << data << ", udata: " << udata << std::endl;
   if (kevent(kq, &kev, 1, NULL, 0, NULL) == -1)
     std::cerr << "Failed to register events: " << strerror(errno) << std::endl;
 }

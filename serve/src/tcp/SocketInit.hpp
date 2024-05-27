@@ -24,10 +24,10 @@
 
 #define LOOP 1
 
-class ASocket {
+class InitSocket {
  public:
-  ASocket();
-  virtual ~ASocket();
+  InitSocket();
+  virtual ~InitSocket();
   void init(int, int &);
   void _socket(int &);
   void _bind(int, int &);

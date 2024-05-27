@@ -28,14 +28,15 @@ class Client {
 
   msg_buffer_t in;
   msg_buffer_t out;
+  std::ostringstream oss;
 
   Transaction* action;
   process_t subprocs;
   const msg_buffer_t& buffer() const;
   msg_buffer_t& get_in();
+
   const Server& server() const;
   int* clientptr();
-  std::ostringstream oss;
   void checkError(bool);
   bool errorid();
 

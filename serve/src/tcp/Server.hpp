@@ -1,13 +1,13 @@
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
-#include "ASocket.hpp"
 #include "Client.hpp"
+#include "SocketInit.hpp"
 #include "structure.hpp"
 
 class Client;
 
-class Server : public ASocket {
+class Server : public InitSocket {
  public:
   Server(const vec_config_t &);
   ~Server();

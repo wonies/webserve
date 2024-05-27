@@ -50,7 +50,7 @@ void Client::request() {
         }
       }
     } catch (errstat_t& err) {
-      log("HTTP\t: transaction: " + str_t(err.what()));
+      log("[LOG]HTTP\t: transaction: " + str_t(err.what()));
 
       in.reset();
       out.reset();
@@ -87,7 +87,7 @@ void Client::request() {
 bool Client::respond() {
   size_t length = out.msg.str().size();
 
-  log("TCP\t: sending\n");
+  log("[LOG]TCP\t: sending\n");
   logging.fs << out.msg.str() << "\n" << std::endl;
 
   ssize_t bytesSent = send(_clientfd, out.msg.str().c_str(), length, 0);
@@ -101,7 +101,6 @@ bool Client::respond() {
 
   out.reset();
   if (action != NULL && action->connection() == 1) {
-    std::clog << "close option\n\n";
     srv.disconnect(_clientfd);
   }
   if (action) {
