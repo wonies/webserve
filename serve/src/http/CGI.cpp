@@ -37,7 +37,6 @@ void CGI::proceed(const Request& rqst, process_t& procs) {
 
   if (rqst.line().method != GET && rqst.line().method != POST)
     throw errstat_t(403, err_msg[CGI_WITH_NOT_ALLOWED]);
-
   _detach(rqst, procs);
   wait(procs);
 }

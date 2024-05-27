@@ -114,12 +114,12 @@ void Server::_write(struct kevent &event) {
     }
   }
   if (_client.subprocs.pid && _client.errorid()) {
-    kill(_client.subprocs.pid, SIGTERM);
     _client.checkError(FALSE);
     return;
   }
   if ((!(_client.subprocs.pid)) && _client.errorid()) {
     disconnect(fds);
+    _client.checkError(FALSE);
     return;
   }
 }
@@ -131,7 +131,7 @@ void Server::_proc(struct kevent &event) {
   std::map<int, Client *>::iterator it = clients.find(client);
   Client &cl = *it->second;
   try {
-    CGI::wait(cl.subprocs);
+    // CGI::wait(cl.subprocs);
     if (WEXITSTATUS(cl.subprocs.stat) != EXIT_SUCCESS) {
       throw errstat_t(500, "the CGI failed to exit as SUCCESS");
     }
@@ -162,7 +162,6 @@ void Server::_timer(struct kevent &event) {
     if (it != clients.end()) {
       throw errstat_t(503, "Time out request on HTTP");
     } else if (event.udata != NULL) {
-      setEvent(event.ident, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
       throw errstat_t(503, "Time out request IN CGI");
     }
   } catch (const errstat_t &e) {
@@ -172,7 +171,6 @@ void Server::_timer(struct kevent &event) {
       cl.checkError(TRUE);
       cl.out.reset();
       Transaction::buildError(e.code, cl);
-      setEvent(event.ident, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
       setEvent(event.ident, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, NULL);
       return;
     } else if (event.udata != NULL) {
@@ -184,7 +182,6 @@ void Server::_timer(struct kevent &event) {
           cl.out.reset();
           cl.checkError(TRUE);
           Transaction::buildError(e.code, cl);
-          setEvent(event.ident, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
           setEvent(udata, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, NULL);
         }
       }
