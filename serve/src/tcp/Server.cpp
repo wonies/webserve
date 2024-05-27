@@ -24,7 +24,7 @@ void Server::_kqueue() {
 }
 
 void Server::_server(int port) {
-  int sock = -1;
+  int sock = 0;
   init(port, sock);
   setEvent(sock, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
   _type[sock] = "serv";
@@ -42,12 +42,13 @@ void Server::setEvent(uintptr_t ident, int16_t filter, uint16_t flags,
     std::cerr << "Failed to register events: " << strerror(errno) << std::endl;
 }
 
-void Server::disconnect(int) {
-  std::map<int, Client *>::iterator it = clients.find(fd);
+void Server::disconnect(int clfd) {
+  std::map<int, Client *>::iterator it = clients.find(clfd);
   if (it != clients.end()) {
-    close(fd);
+    close(clfd);
     delete it->second;
     clients.erase(it);
+    _type.erase(clfd);
   }
 }
 
@@ -208,18 +209,23 @@ void Server::run(vec_config_t &conf) {
   confset(conf);
   while (true) {
     nevents = _cnttake();
-    for (int i = 0; i < nevents; ++i) {
-      struct kevent &temp = events[i];
-      if (eventerr(temp)) continue;
+    try {
+      for (int i = 0; i < nevents; ++i) {
+        struct kevent &temp = events[i];
+        if (eventerr(temp)) continue;
 
-      if (temp.filter == EVFILT_READ)
-        _read(temp);
-      else if (temp.filter == EVFILT_WRITE)
-        _write(temp);
-      else if (temp.filter == EVFILT_PROC)
-        _proc(temp);
-      else if (temp.filter == EVFILT_TIMER)
-        _timer(temp);
+        if (temp.filter == EVFILT_READ)
+          _read(temp);
+        else if (temp.filter == EVFILT_WRITE)
+          _write(temp);
+        else if (temp.filter == EVFILT_PROC)
+          _proc(temp);
+        else if (temp.filter == EVFILT_TIMER)
+          _timer(temp);
+      }
+
+    } catch (const std::exception &e) {
+      std::cerr << e.what() << '\n';
     }
   }
 }

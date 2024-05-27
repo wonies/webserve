@@ -31,7 +31,7 @@ void ASocket::_bind(int port, int &sock) {
 }
 
 void ASocket::_listen(int &sock) {
-  if (listen(sock, 10) == -1) {
+  if (listen(sock, 100) == -1) {
     close(sock);
     throw err_t("[SOCKET] : Listen error");
   }

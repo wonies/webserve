@@ -60,10 +60,10 @@ void Client::request() {
       action = NULL;
       if (subprocs.pid)
         srv.setEvent(subprocs.pid, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
-      // if (srv.timing == TRUE) {
-      //   srv.setEvent(_clientfd, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
-      //   srv.timing = FALSE;
-      // }
+      if (srv.timing == TRUE) {
+        srv.setEvent(_clientfd, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
+        srv.timing = FALSE;
+      }
       srv.setEvent(_clientfd, EVFILT_READ, EV_DELETE | EV_ONESHOT, 0, 0, NULL);
       srv.setEvent(_clientfd, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, NULL);
     } catch (err_t& err) {
@@ -72,10 +72,10 @@ void Client::request() {
       Transaction::buildError(400, *this);
       checkError(TRUE);
       action = NULL;
-      // if (srv.timing == TRUE) {
-      //   srv.setEvent(_clientfd, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
-      //   srv.timing = FALSE;
-      // }
+      if (srv.timing == TRUE) {
+        srv.setEvent(_clientfd, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
+        srv.timing = FALSE;
+      }
       if (subprocs.pid)
         srv.setEvent(subprocs.pid, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
       srv.setEvent(_clientfd, EVFILT_READ, EV_DELETE | EV_ONESHOT, 0, 0, NULL);
@@ -101,8 +101,8 @@ bool Client::respond() {
 
   out.reset();
   if (action != NULL && action->connection() == 1) {
+    std::clog << "close option\n\n";
     srv.disconnect(_clientfd);
-    return false;
   }
   if (action) {
     delete action;
@@ -146,6 +146,5 @@ void process_s::reset() {
 const msg_buffer_t& Client::buffer() const { return in; }
 
 msg_buffer_t& Client::get_in() { return in; }
-// process_t& Client::get_process() { return subprocs; }
 
 const Server& Client::server() const { return srv; }

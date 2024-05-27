@@ -46,7 +46,6 @@ class Server : public ASocket {
  private:
   int kq;
   int nevents;
-  int fd;
   struct timespec _time;
   std::vector<struct kevent> events;
   std::map<int, Client *> clients;
