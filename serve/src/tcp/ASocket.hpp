@@ -26,14 +26,12 @@
 
 class ASocket {
  public:
-  int sock;
-  //   std::vector<int> socklist; //나중에 socket list넣을때
   ASocket();
   virtual ~ASocket();
-  void init(int);
-  void _socket();
-  void _bind(int);
-  void _listen();
+  void init(int, int &);
+  void _socket(int &);
+  void _bind(int, int &);
+  void _listen(int &);
   void nonblock(int);
 };
 

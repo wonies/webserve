@@ -11,58 +11,37 @@ int Client::getfd() const { return _clientfd; }
 
 int* Client::clientptr() { return static_cast<int*>(&_clientfd); }
 
+bool Client::errorid() { return _errorid; }
 
-bool Client::errorid()
-{
-  return _errorid;
-}
-
-void Client::checkError( bool val )
-{
-  _errorid = val;
-}
+void Client::checkError(bool val) { _errorid = val; }
 
 void Client::request() {
   char buf[SIZE_BUF];
   ssize_t byte = recv(_clientfd, buf, SIZE_BUF, 0);
-  std::clog << "\nbyte-----\n" << byte << std::endl;
-  std::clog << "\nbuf-----\n" << buf << std::endl;
-
   if (byte <= 0) {
-    srv.disconnect(_clientfd); // ? 
-    return ;
-    } 
-    else {
+    srv.disconnect(_clientfd);
+    return;
+  } else {
     try {
-      if (Transaction::recvMsg(in, buf,
-                               byte)) {  // cgi인지 아닌 지 판단해줌 ( header에
-                                         // 있음  => fork했으면 pid 값이 나옴)
+      if (Transaction::recvMsg(in, buf, byte)) {
         logging.fs << in.msg.str() << std::endl;
-
         if (!action) {
           action = new Transaction(*this);
-
           if (subprocs.pid) {
-            std::clog << "pid : " << subprocs.pid << std::endl;
-            srv.setEvent(subprocs.pid, EVFILT_TIMER, EV_ADD | EV_ONESHOT,
-            0, 10000, clientptr());
+            srv.setEvent(subprocs.pid, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0,
+                         10000, clientptr());
             srv.setEvent(subprocs.pid, EVFILT_PROC, EV_ADD | EV_ONESHOT,
                          NOTE_EXIT, 0, clientptr());
-            // void포인터 -> pid ident. client_socket이 들어가야되는데......
-            // NOTE_EXIT -> event process가 종료될 때 이벤트를 발생한다?
           }
         }
-
         if (Transaction::recvBody(in, subprocs, buf, byte)) {
           logging.fs << in.body.str() << std::endl;
-
           if (!subprocs.pid) {
             if (action) action->act();
             in.reset();
             srv.setEvent(_clientfd, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0,
                          NULL);
-            if ( srv.timing == TRUE )
-            {
+            if (srv.timing == TRUE) {
               srv.setEvent(_clientfd, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
               srv.timing = FALSE;
             }
@@ -81,23 +60,26 @@ void Client::request() {
       action = NULL;
       if (subprocs.pid)
         srv.setEvent(subprocs.pid, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
-      //이 부분도 timer있어야하는 거 아닌가???
-      srv.setEvent(_clientfd, EVFILT_READ, EV_DELETE | EV_ONESHOT, 0, 0, NULL); 
+      // if (srv.timing == TRUE) {
+      //   srv.setEvent(_clientfd, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
+      //   srv.timing = FALSE;
+      // }
+      srv.setEvent(_clientfd, EVFILT_READ, EV_DELETE | EV_ONESHOT, 0, 0, NULL);
       srv.setEvent(_clientfd, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, NULL);
-      srv.setEvent(_clientfd, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
-    }
-    catch (err_t& err) {
+    } catch (err_t& err) {
       log("HTTP\t: Request: " + str_t(err.what()));
       in.reset();
       Transaction::buildError(400, *this);
       checkError(TRUE);
       action = NULL;
+      // if (srv.timing == TRUE) {
+      //   srv.setEvent(_clientfd, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
+      //   srv.timing = FALSE;
+      // }
       if (subprocs.pid)
         srv.setEvent(subprocs.pid, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
-      //이 부분도 timer있어야하는거아닌가?
       srv.setEvent(_clientfd, EVFILT_READ, EV_DELETE | EV_ONESHOT, 0, 0, NULL);
       srv.setEvent(_clientfd, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, NULL);
-      srv.setEvent(_clientfd, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
     }
   }
 }
@@ -118,8 +100,7 @@ bool Client::respond() {
   }
 
   out.reset();
-  if (action != NULL && action->connection() == 1)
-  {
+  if (action != NULL && action->connection() == 1) {
     srv.disconnect(_clientfd);
     return false;
   }

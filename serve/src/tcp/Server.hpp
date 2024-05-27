@@ -37,11 +37,12 @@ class Server : public ASocket {
   void confset(vec_config_t &);
 
   //_read
-  void connectEvent();
+  void connectEvent(int);
   void clientEvent(struct kevent &);
   void addClient(int);
 
   bool timing;
+
  private:
   int kq;
   int nevents;
@@ -50,15 +51,7 @@ class Server : public ASocket {
   std::vector<struct kevent> events;
   std::map<int, Client *> clients;
   std::map<int, std::string> _type;
-
-  // socket_server -> 여러개/ client ->
-  // fd 4/ 3e97ewq8e78 / cgi / ----
-  // fd : "serv" / "cl" / "cgi fd"
-  // else -> cgi -> 어떤 소켓이랑 연결이 되었는 지 알 수 없음
-  // udata에 저장 => fd값은 재할당이 될 수 있음
-  // udata -> (void *) // client server 문자열을 저장해놓고
-  // cgi <-> sock // cgi udata에 소켓번호저장.
-
+  std::vector<int> _portarray;
   const vec_config_t &_confs;
 };
 

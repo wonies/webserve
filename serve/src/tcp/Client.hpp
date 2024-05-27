@@ -34,12 +34,11 @@ class Client {
   const msg_buffer_t& buffer() const;
   msg_buffer_t& get_in();
   const Server& server() const;
-  // process_t& get_process();
   int* clientptr();
   std::ostringstream oss;
-  void checkError( bool );
+  void checkError(bool);
   bool errorid();
-  
+
  private:
   Server& srv;
   int _clientfd;
